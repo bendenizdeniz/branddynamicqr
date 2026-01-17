@@ -4,7 +4,6 @@ import { PrismaFactory, LangIdMap } from "../factories/PrismaFactory";
 import * as CoreEnums from "../enums/CoreEnums";
 import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
-import { LocalizedProductResponse } from "../types/responses";
 import { TokenPayload } from "../utils/JwtUtils";
 import { AuthorizeTypes } from "../enums/CoreEnums";
 
@@ -23,7 +22,11 @@ export class ApiService {
     return langs.reduce((acc, lang) => ({ ...acc, [lang.code]: lang.id }), {} as LangIdMap);
   }
 
-async runSeed() {
+async runSeed(user: TokenPayload) {
+if ((user.role as string).toLocaleLowerCase() !== CoreEnums.AuthorizeTypes.ADMIN) {
+    throw new Error("Seed işlemi sadece sistem yöneticileri tarafından gerçekleştirilebilir.");
+  }
+
   try {
     // 1. Dillerin Hazırlanması (Localization Foundation)
     const langConfigs = [
@@ -58,9 +61,24 @@ async runSeed() {
       trLangId
     );
 
+      const subIzmir = await this.factory.upsertSubvendor(
+      "izmir_karşıyaka_001", 
+      "EspressoLab Karşıyaka", 
+      brandLab.id, 
+      trLangId
+    );
+
+      const subHeidelbeerg = await this.factory.upsertSubvendor(
+      "heidelbeerg_001", 
+      "EspressoLab Heidelbeerg", 
+      brandLab.id, 
+      trLangId
+    );
+
+
     const subLon = await this.factory.upsertSubvendor(
       "lon_soho_001", 
-      "EspressoLab Soho", 
+      "EspressoLab Manchester Soho", 
       brandLab.id, 
       enLangId
     );
@@ -147,52 +165,61 @@ async runSeed() {
   }
 }
 
-  async getDashboardData() {
-    const owners = await this.prisma.owner.findMany({
-      include: {
-        brands: {
-          include: {
-            category_products: {
-              include: { category: true, product: true }
-            }
+  async getDashboardData(user: TokenPayload) {
+  // Business: Sadece ADMIN veya OWNER tüm holding dashboard'unu görebilir.
+  // BRAND veya SUBVENDOR sadece kendi markasını görmeli (bunu ileride özelleştirebilirsin).
+  const userRole = (user.role as string).toLowerCase();
+  if (userRole !== AuthorizeTypes.ADMIN && (user.role as string) !== AuthorizeTypes.OWNER) {
+    throw new Error("Dashboard verilerini görmeye yetkiniz yok.");
+  }
+
+  const owners = await this.prisma.owner.findMany({
+    // Eğer role OWNER ise sadece kendi ownerId'sini görsün
+    where: userRole === AuthorizeTypes.OWNER ? { id: user.ownerId! } : {},
+    include: {
+      brands: {
+        include: {
+          category_products: {
+            include: { category: true, product: true }
           }
         }
       }
-    });
+    }
+  });
 
-    const allTranslations = await this.prisma.stringValue.findMany({
-      include: { language: true }
-    });
+  const allTranslations = await this.prisma.stringValue.findMany({
+    include: { language: true }
+  });
 
-    const getNames = (entityId: number, type: string) => {
-      return allTranslations
-        .filter(t => t.entity_id === entityId && t.type === type)
-        .reduce((acc, t) => ({ ...acc, [t.language.code]: t.value }), {} as Record<string, string>);
-    };
+  const getNames = (entityId: number, type: string) => {
+    return allTranslations
+      .filter(t => t.entity_id === entityId && t.type === type)
+      .reduce((acc, t) => ({ ...acc, [t.language.code]: t.value }), {} as Record<string, string>);
+  };
 
-    return owners.map(owner => ({
-      ...owner,
-      brands: owner.brands.map(brand => ({
-        ...brand,
-        products: brand.category_products.map(cp => ({
-          price: cp.price,
-          ext_id: cp.ext_id,
-          category: {
-            ...cp.category,
-            names: getNames(cp.category.id, 'category')
-          },
-          product: {
-            ...cp.product,
-            names: getNames(cp.product.id, 'product')
-          }
-        }))
+  return owners.map(owner => ({
+    ...owner,
+    brands: owner.brands.map(brand => ({
+      ...brand,
+      products: brand.category_products.map(cp => ({
+        price: cp.price,
+        ext_id: cp.ext_id,
+        category: {
+          ...cp.category,
+          names: getNames(cp.category.id, CoreEnums.CATEGORY)
+        },
+        product: {
+          ...cp.product,
+          names: getNames(cp.product.id, CoreEnums.PRODUCT)
+        }
       }))
-    }));
-  }
+    }))
+  }));
+}
 
 async getBrandProductsLocalized(user: TokenPayload, lang: string) {
     // 1. Yetki Kontrolü
-    if (!user.brandId && user.role !== 'ADMIN') {
+    if (!user.brandId && user.role as string !== CoreEnums.AuthorizeTypes.ADMIN) {
       throw new Error("Yetkisiz erişim: Marka bilgisi bulunamadı.");
     }
 

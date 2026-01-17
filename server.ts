@@ -17,11 +17,18 @@ const apiService = new ApiService(prisma, factory);
 const controller = new ApiController(apiService, factory);
 
 // Routes
-app.get("/seed", controller.seed);
-app.get("/dashboard-data", controller.getDashboard);
-app.post("/owners", controller.postOwner);
-app.post("/categories", controller.postCategory);
-app.post("/products", controller.postProduct);
+// Sadece en üst seviye admin yapabilmeli
+app.get("/seed", AuthMiddleware.verify, controller.seed);
+
+// Dashboard verisi genelde Admin veya Owner (Holding) içindir
+app.get("/dashboard-data", AuthMiddleware.verify, controller.getDashboard);
+
+// Yönetimsel kayıt işlemleri (Sadece Admin yetkisinde olmalı)
+app.post("/owners", AuthMiddleware.verify, controller.postOwner);
+app.post("/categories", AuthMiddleware.verify, controller.postCategory);
+app.post("/products", AuthMiddleware.verify, controller.postProduct);
+
+// Login her zaman herkese açık kalmalı
 app.post('/auth/login', IdentityController.login);
 
 // Bu rotaya sadece geçerli bir token'ı olan ve rolü ADMIN veya OWNER olanlar girebilir
