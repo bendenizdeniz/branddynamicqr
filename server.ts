@@ -1,5 +1,6 @@
 // server.ts
 import express from "express";
+import cors from 'cors';
 import { PrismaClient } from "@prisma/client";
 import { PrismaFactory } from "./factories/PrismaFactory";
 import { ApiService } from "./services/ApiService";
@@ -9,7 +10,14 @@ import { AuthMiddleware } from './middlewares/AuthMiddleware';
 
 
 const app = express();
-app.use(express.json()); // MUTLAKA rotalardan yukarıda olmal
+app.use(express.json()); 
+
+app.use(cors({
+  origin: 'http://localhost:5173', // Frontend'in adresi (Vite default portu)
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true // Token/Cookie işlemleri için önemli
+}));
 
 const prisma = new PrismaClient();
 const factory = new PrismaFactory(prisma);
