@@ -17,6 +17,13 @@ export enum EntityTypes {
   PRODUCT = "product"
 }
 
+export enum AuthorizeTypes {
+  ADMIN = "admin",       // Admin
+  OWNER = "owner",       // Yıldız Holding 
+  BRAND = "brand",       // EspressoLab 
+  SUBVENDOR = "subvendor", // Bebek Şubesi 
+}
+
 // Geriye dönük uyumluluk için eski isimlerle export ediyoruz
 export const LANG_TR = LanguageCodes.TR;
 export const LANG_EN = LanguageCodes.EN;

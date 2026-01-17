@@ -46,13 +46,28 @@ export class PrismaFactory {
     });
   }
 
-  async upsertSubvendor(ext_id: string, name: string, brandId: number): Promise<Subvendor> {
-    return await this.prisma.subvendor.upsert({
-      where: { ext_id },
-      update: { name, brandId },
-      create: { ext_id, name, brandId }
-    });
-  }
+// languageId parametresini ekledik
+async upsertSubvendor(
+  ext_id: string, 
+  name: string, 
+  brandId: number, 
+  languageId: number // Yeni zorunlu parametre
+): Promise<Subvendor> {
+  return await this.prisma.subvendor.upsert({
+    where: { ext_id },
+    update: { 
+      name, 
+      brandId, 
+      languageId // Update kısmına da ekledik
+    },
+    create: { 
+      ext_id, 
+      name, 
+      brandId, 
+      languageId // Create kısmına da ekledik
+    }
+  });
+}
 
   async createTranslation(
     entityId: number, 

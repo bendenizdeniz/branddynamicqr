@@ -7,20 +7,57 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- CORE ENUMS ---
+
+enum Role {
+  ADMIN
+  OWNER
+  BRAND
+  SUBVENDOR
+}
+
+// --- AUTHENTICATION & IDENTITY ---
+
+model Identity {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String
+  role          Role      @default(SUBVENDOR)
+
+  // Hiyerarşik Bağlantılar
+  // Bir identity sadece bir seviyeye bağlı olabilir (Opsiyonel)
+  ownerId       Int?
+  owner         Owner?    @relation(fields: [ownerId], references: [id])
+  
+  brandId       Int?
+  brand         Brand?    @relation(fields: [brandId], references: [id])
+  
+  subvendorId   Int?
+  subvendor     Subvendor? @relation(fields: [subvendorId], references: [id])
+
+  // Audit
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  last_login    DateTime?
+}
+
+// --- BUSINESS ENTITIES ---
+
 model Owner {
-  id            Int      @id @default(autoincrement())
-  ext_id        String   @unique
+  id            Int        @id @default(autoincrement())
+  ext_id        String     @unique
   name          String
   official_name String?
-  vkn           String   @unique
+  vkn           String     @unique
   address       String?
+  
   brands        Brand[]
+  identities    Identity[] // Owner seviyesindeki kimlikler
 
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  created_by    String?
-  updated_by    String?
-  is_deleted    Boolean  @default(false)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  is_deleted    Boolean    @default(false)
 }
 
 model Brand {
@@ -36,16 +73,16 @@ model Brand {
   thumbnail         String?
   phone             String?
   
-  owner             Owner             @relation(fields: [ownerId], references: [id])
   ownerId           Int
+  owner             Owner             @relation(fields: [ownerId], references: [id])
+  
   subvendors        Subvendor[]
   category_products CategoryProduct[]
+  identities        Identity[]        // Marka yöneticisi kimlikleri
 
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-  created_by        String?
-  updated_by        String?
-  is_deleted        Boolean  @default(false)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  is_deleted        Boolean           @default(false)
 }
 
 model Subvendor {
@@ -56,96 +93,93 @@ model Subvendor {
   vkn             String?
   address         String?
   employee_volume Int?
-  thema           String?
-  language        String?
-  phone           String?
-
-  brand           Brand    @relation(fields: [brandId], references: [id])
+  
+  // Design & Localization
+  thema           String?  // Brand'den gelen tema
+  customThema     String?  // Şubeye özel override
+  
+  languageId      Int      // Şubenin varsayılan dili
+  defaultLanguage Language @relation(fields: [languageId], references: [id])
+  
   brandId         Int
+  brand           Brand    @relation(fields: [brandId], references: [id])
+  
+  identities      Identity[] // Şube çalışanı/yöneticisi kimlikleri
 
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-  created_by      String?
-  updated_by      String?
   is_deleted      Boolean  @default(false)
 }
 
-model Product {
-  id             Int               @id @default(autoincrement())
-  ext_id         String            @unique
-  category_links CategoryProduct[]
+// --- PRODUCT & CATEGORY MANAGEMENT ---
 
-  // Audit Fields
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  created_by     String?
-  updated_by     String?
-  is_deleted     Boolean  @default(false)
+model Product {
+  id              Int               @id @default(autoincrement())
+  ext_id          String            @unique
+  category_links  CategoryProduct[]
+
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  is_deleted      Boolean           @default(false)
 }
 
 model Category {
-  id            Int               @id @default(autoincrement())
-  ext_id        String            @unique
-  type          String?
-  product_links CategoryProduct[]
+  id              Int               @id @default(autoincrement())
+  ext_id          String            @unique
+  type            String?           // örn: "food", "drink"
+  product_links   CategoryProduct[]
 
-  // Audit Fields
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  created_by    String?
-  updated_by    String?
-  is_deleted    Boolean  @default(false)
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  is_deleted      Boolean           @default(false)
 }
 
 model CategoryProduct {
-  id          Int      @id @default(autoincrement())
-  ext_id      String   @unique @default(uuid())
+  id              Int       @id @default(autoincrement())
+  ext_id          String    @unique @default(uuid())
   
-  brandId     Int
-  categoryId  Int
-  productId   Int
-  price       Float
+  brandId         Int
+  categoryId      Int
+  productId       Int
+  price           Float
 
-  brand       Brand    @relation(fields: [brandId], references: [id])
-  category    Category @relation(fields: [categoryId], references: [id])
-  product     Product  @relation(fields: [productId], references: [id])
+  brand           Brand     @relation(fields: [brandId], references: [id])
+  category        Category  @relation(fields: [categoryId], references: [id])
+  product         Product   @relation(fields: [productId], references: [id])
 
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  created_by  String?
-  updated_by  String?
-  is_deleted  Boolean  @default(false)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  is_deleted      Boolean   @default(false)
 
   @@unique([brandId, categoryId, productId])
 }
 
-model Language {
-  id         Int           @id @default(autoincrement())
-  code       String        @unique
-  name       String
-  values     StringValue[]
+// --- LOCALIZATION SYSTEM ---
 
-  created_at DateTime      @default(now())
-  updated_at DateTime      @updatedAt
-  created_by String?
-  updated_by String?
-  is_deleted Boolean       @default(false)
+model Language {
+  id              Int           @id @default(autoincrement())
+  code            String        @unique // tr, en, de
+  name            String
+  values          StringValue[]
+  subvendors      Subvendor[]
+
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  is_deleted      Boolean       @default(false)
 }
 
 model StringValue {
-  id          Int      @id @default(autoincrement())
-  entity_id   Int
-  value       String
-  type        String
+  id              Int       @id @default(autoincrement())
+  entity_id       Int       // Product veya Category ID
+  value           String
+  type            String    // "product_name", "category_name" vb.
   
-  language    Language @relation(fields: [languageId], references: [id])
-  languageId  Int
+  languageId      Int
+  language        Language  @relation(fields: [languageId], references: [id])
 
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  created_by  String?
-  updated_by  String?
-  is_deleted  Boolean  @default(false)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  is_deleted      Boolean   @default(false)
 
   @@unique([entity_id, languageId, type])
 }
