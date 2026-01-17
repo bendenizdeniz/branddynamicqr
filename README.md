@@ -14,7 +14,7 @@ To ensure data consistency and reduce boilerplate, a custom `PrismaFactory` hand
 * Managing Brands and their Sub-vendors.
 * Automating multi-language string values for products and categories.
 
-### 2. **Multi-Language Support (Localization)**
+### 2. **Multi-Language Support (Localization) With StringMap**
 
 Instead of static columns, the system uses a relational `StringValue` and `Language` table structure.
 
