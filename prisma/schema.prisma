@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Owner {
+  id            Int      @id @default(autoincrement())
+  ext_id        String   @unique
+  name          String
+  official_name String?
+  vkn           String   @unique
+  address       String?
+  brands        Brand[]
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  created_by    String?
+  updated_by    String?
+  is_deleted    Boolean  @default(false)
+}
+
+model Brand {
+  id                Int               @id @default(autoincrement())
+  ext_id            String            @unique
+  name              String
+  official_name     String?
+  vkn               String            @unique
+  address           String?
+  icon              String?
+  coordX            String?
+  coordY            String?
+  thumbnail         String?
+  phone             String?
+  
+  owner             Owner             @relation(fields: [ownerId], references: [id])
+  ownerId           Int
+  subvendors        Subvendor[]
+  category_products CategoryProduct[]
+
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  created_by        String?
+  updated_by        String?
+  is_deleted        Boolean  @default(false)
+}
+
+model Subvendor {
+  id              Int      @id @default(autoincrement())
+  ext_id          String   @unique
+  name            String
+  official_name   String?
+  vkn             String?
+  address         String?
+  employee_volume Int?
+  thema           String?
+  language        String?
+  phone           String?
+
+  brand           Brand    @relation(fields: [brandId], references: [id])
+  brandId         Int
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  created_by      String?
+  updated_by      String?
+  is_deleted      Boolean  @default(false)
+}
+
+model Product {
+  id             Int               @id @default(autoincrement())
+  ext_id         String            @unique
+  category_links CategoryProduct[]
+
+  // Audit Fields
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  created_by     String?
+  updated_by     String?
+  is_deleted     Boolean  @default(false)
+}
+
+model Category {
+  id            Int               @id @default(autoincrement())
+  ext_id        String            @unique
+  type          String?
+  product_links CategoryProduct[]
+
+  // Audit Fields
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  created_by    String?
+  updated_by    String?
+  is_deleted    Boolean  @default(false)
+}
+
+model CategoryProduct {
+  id          Int      @id @default(autoincrement())
+  ext_id      String   @unique @default(uuid())
+  
+  brandId     Int
+  categoryId  Int
+  productId   Int
+  price       Float
+
+  brand       Brand    @relation(fields: [brandId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  created_by  String?
+  updated_by  String?
+  is_deleted  Boolean  @default(false)
+
+  @@unique([brandId, categoryId, productId])
+}
+
+model Language {
+  id         Int           @id @default(autoincrement())
+  code       String        @unique
+  name       String
+  values     StringValue[]
+
+  created_at DateTime      @default(now())
+  updated_at DateTime      @updatedAt
+  created_by String?
+  updated_by String?
+  is_deleted Boolean       @default(false)
+}
+
+model StringValue {
+  id          Int      @id @default(autoincrement())
+  entity_id   Int
+  value       String
+  type        String
+  
+  language    Language @relation(fields: [languageId], references: [id])
+  languageId  Int
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  created_by  String?
+  updated_by  String?
+  is_deleted  Boolean  @default(false)
+
+  @@unique([entity_id, languageId, type])
+}
