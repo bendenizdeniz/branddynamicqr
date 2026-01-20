@@ -1,23 +1,26 @@
-import { Request, Response } from 'express';
-import { BrandService } from '../services/BrandService';
+import { Request, Response } from "express";
+import { BrandService } from "../services/BrandService";
 
 export class BrandController {
-  private brandService: BrandService;
+  constructor(private service: BrandService) {}
 
-  constructor() {
-    this.brandService = new BrandService();
-  }
+  list = async (req: Request, res: Response) => {
+    const data = await this.service.getAllBrands(req.query.search as string);
+    res.json(data);
+  };
 
-  // GET /brands
-  getBrands = async (_req: Request, res: Response): Promise<void> => {
-    try {
-      const brands = await this.brandService.getAllBrands();
-      res.status(200).json(brands);
-    } catch (error: any) {
-      console.error('BrandController Error:', error);
-      res.status(500).json({ 
-        error: 'Markalar getirilirken bir sunucu hatası oluştu.' 
-      });
-    }
+  create = async (req: Request, res: Response) => {
+    const result = await this.service.createBrand(req.body);
+    res.status(201).json(result);
+  };
+
+  update = async (req: Request, res: Response) => {
+    const result = await this.service.updateBrand(Number(req.params.id), req.body);
+    res.json(result);
+  };
+
+  remove = async (req: Request, res: Response) => {
+    await this.service.softDelete(Number(req.params.id));
+    res.json({ message: "Marka silindi" });
   };
 }

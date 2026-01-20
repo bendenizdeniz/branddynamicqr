@@ -1,84 +1,62 @@
-// controllers/SubvendorController.ts
-import { Request, Response } from 'express';
-import { SubvendorService } from '../services/SubvendorService';
-import * as CoreEnums from "../enums/CoreEnums";
+import { Request, Response } from "express";
+import { SubvendorService } from "../services/SubvendorService";
 
 export class SubvendorController {
-  private subvendorService: SubvendorService;
+  private service: SubvendorService;
 
-  constructor(subvendorService: SubvendorService) {
-    this.subvendorService = subvendorService;
+  constructor(service: SubvendorService) {
+    this.service = service;
   }
 
-getSubvendors = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { searchKeyword, brandId, status } = req.body;
-    
-    const subvendors = await this.subvendorService.getAllSubvendors({
-      searchKeyword: searchKeyword || undefined,
-      // brandId null gelirse undefined yapıyoruz ki TS hata vermesin
-      brandId: brandId ? Number(brandId) : undefined, 
-      status: status === 'active' ? true : status === 'passive' ? false : undefined
-    });
-
-    res.status(200).json({ success: true, data: subvendors });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-  postSubvendor = async (req: Request, res: Response): Promise<void> => {
+  list = async (req: Request, res: Response) => {
     try {
-      const user = req.user!;
-      
-      // Sadece ADMIN şube ekleyebilir kontrolü
-      if ((user.role as string).toUpperCase() !== CoreEnums.AuthorizeTypes.ADMIN) {
-        res.status(403).json({ message: "Bu işlem için Admin yetkisi gerekiyor." });
-        return;
-      }
-
-      const subvendorData = req.body;
-      const result = await this.subvendorService.createSubvendor(subvendorData);
-
-      res.status(201).json({
-        success: true,
-        data: result
+      const { search, brandId, status } = req.query;
+      const data = await this.service.getAllSubvendors({
+        searchKeyword: search as string,
+        brandId: brandId ? Number(brandId) : undefined,
+        status: status === "true" ? true : status === "false" ? false : undefined
       });
+      res.json({ status: "success", data });
     } catch (error: any) {
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      res.status(500).json({ status: "error", message: error.message });
     }
   };
 
-putSubvendor = async (req: Request, res: Response): Promise<void> => {
+  create = async (req: Request, res: Response) => {
+    try {
+      const result = await this.service.createSubvendor(req.body);
+      res.status(201).json({ status: "success", data: result });
+    } catch (error: any) {
+      res.status(400).json({ status: "error", message: error.message });
+    }
+  };
+
+update = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await this.subvendorService.updateSubvendor(Number(id), req.body);
-    res.status(200).json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    const updateData = req.body;
+
+    // Servise ID ve tüm body paketini gönderiyoruz
+    const result = await this.service.update(Number(id), updateData);
+
+    res.json({ 
+      status: "success", 
+      message: "Şube başarıyla güncellendi", 
+      data: result 
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Güncelleme sırasında hata oluştu";
+    res.status(400).json({ status: "error", message });
   }
 };
 
-patchSubvendorStatus = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body; // true veya false
-    const result = await this.subvendorService.toggleSubvendorStatus(Number(id), status);
-    res.status(200).json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-deleteSubvendor = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    await this.subvendorService.deleteSubvendor(Number(id));
-    res.status(200).json({ success: true, message: "Şube başarıyla silindi." });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+  remove = async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await this.service.softDelete(Number(id));
+      res.json({ status: "success", message: "Subvendor silindi" });
+    } catch (error: any) {
+      res.status(400).json({ status: "error", message: error.message });
+    }
+  };
 }
