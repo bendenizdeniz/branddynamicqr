@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
+    "start:dev": "ts-node-dev --respawn --transpile-only server.ts",
+    "start:debug": "node --inspect=0.0.0.0:9229 -r ts-node/register server.ts",
     "build": "tsc",
-    "start": "prisma generate && tsc && node dist/server.js",
-    "dev": "nodemon --watch './**/*.ts' --exec 'ts-node' server.ts"
+    "start": "node dist/server.js"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "^6.19.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
@@ -23,6 +24,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.30",
     "nodemon": "^3.0.1",
-    "prisma": "^6.2.1"
+    "prisma": "^6.19.2"
   }
 }

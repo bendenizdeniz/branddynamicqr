@@ -30,6 +30,55 @@ export class PrismaFactory {
     this.prisma = prisma;
   }
 
+// factories/PrismaFactory.ts
+
+async upsertCategory(ext_id: string, names: TranslationMap, langMap: LangIdMap, businessType: string): Promise<Category> {
+  const category = await this.prisma.category.upsert({
+    where: { ext_id },
+    update: { type: businessType }, // Örn: "sıcak_icecek"
+    create: { ext_id, type: businessType }
+  });
+  
+  // Burada type parametresini "category_name" olarak sabit gönderiyoruz
+  await this.createTranslation(category.id, names, langMap, "category"); 
+  return category;
+}
+
+async createTranslation(
+  entityId: number, 
+  translations: TranslationMap, 
+  langMap: LangIdMap, 
+  translationType: string // "category", "product", "description"
+): Promise<StringValue[]> {
+  const entries = Object.entries(translations);
+  
+  const upserts = entries.map(([code, value]) => {
+    const languageId = langMap[code];
+    if (!languageId) {
+      throw new Error(`Dil ID bulunamadı: ${code}`);
+    }
+
+    return this.prisma.stringValue.upsert({
+      where: { 
+        entity_id_languageId_type: { 
+          entity_id: entityId, 
+          languageId: languageId, 
+          type: translationType // "category", "product", "description"
+        } 
+      },
+      update: { value },
+      create: { 
+        entity_id: entityId, 
+        languageId: languageId, 
+        value: value, 
+        type: translationType 
+      }
+    });
+  });
+
+  return Promise.all(upserts);
+}
+
   async upsertOwner(ext_id: string, name: string, vkn: string): Promise<Owner> {
     return await this.prisma.owner.upsert({
       where: { vkn },
@@ -69,42 +118,6 @@ async upsertSubvendor(
   });
 }
 
-  async createTranslation(
-    entityId: number, 
-    translations: TranslationMap, 
-    langMap: LangIdMap, 
-    type: string
-  ): Promise<StringValue[]> {
-    // Object.entries ve Promise hatalarını gidermek için tsconfig/lib ES2020 olmalı
-    const entries = Object.entries(translations);
-    
-    const upserts = entries.map(([code, value]) => {
-      const languageId = langMap[code];
-      if (!languageId) {
-        throw new Error(`Dil ID bulunamadı: ${code}`);
-      }
-
-      return this.prisma.stringValue.upsert({
-        where: { 
-          entity_id_languageId_type: { 
-            entity_id: entityId, 
-            languageId: languageId, 
-            type: type 
-          } 
-        },
-        update: { value },
-        create: { 
-          entity_id: entityId, 
-          languageId: languageId, 
-          value: value, 
-          type: type 
-        }
-      });
-    });
-
-    return Promise.all(upserts);
-  }
-
   async upsertProduct(ext_id: string, names: TranslationMap, langMap: LangIdMap, type: string): Promise<Product> {
     const product = await this.prisma.product.upsert({
       where: { ext_id },
@@ -114,16 +127,5 @@ async upsertSubvendor(
     
     await this.createTranslation(product.id, names, langMap, type);
     return product;
-  }
-
-  async upsertCategory(ext_id: string, names: TranslationMap, langMap: LangIdMap, type: string): Promise<Category> {
-    const category = await this.prisma.category.upsert({
-      where: { ext_id },
-      update: { type },
-      create: { ext_id, type }
-    });
-    
-    await this.createTranslation(category.id, names, langMap, type);
-    return category;
   }
 }

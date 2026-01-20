@@ -7,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- CORE ENUMS ---
-
 enum Role {
   ADMIN
   OWNER
@@ -16,16 +14,12 @@ enum Role {
   SUBVENDOR
 }
 
-// --- AUTHENTICATION & IDENTITY ---
-
 model Identity {
   id            Int       @id @default(autoincrement())
   email         String    @unique
   password      String
   role          Role      @default(SUBVENDOR)
 
-  // Hiyerarşik Bağlantılar
-  // Bir identity sadece bir seviyeye bağlı olabilir (Opsiyonel)
   ownerId       Int?
   owner         Owner?    @relation(fields: [ownerId], references: [id])
   
@@ -35,14 +29,11 @@ model Identity {
   subvendorId   Int?
   subvendor     Subvendor? @relation(fields: [subvendorId], references: [id])
 
-  // Audit
   is_active     Boolean   @default(true)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   last_login    DateTime?
 }
-
-// --- BUSINESS ENTITIES ---
 
 model Owner {
   id            Int        @id @default(autoincrement())
@@ -53,7 +44,7 @@ model Owner {
   address       String?
   
   brands        Brand[]
-  identities    Identity[] // Owner seviyesindeki kimlikler
+  identities    Identity[]
 
   created_at    DateTime   @default(now())
   updated_at    DateTime   @updatedAt
@@ -78,7 +69,7 @@ model Brand {
   
   subvendors        Subvendor[]
   category_products CategoryProduct[]
-  identities        Identity[]        // Marka yöneticisi kimlikleri
+  identities        Identity[]
 
   created_at        DateTime          @default(now())
   updated_at        DateTime          @updatedAt
@@ -89,29 +80,34 @@ model Subvendor {
   id              Int      @id @default(autoincrement())
   ext_id          String   @unique
   name            String
-  official_name   String?
-  vkn             String?
-  address         String?
-  employee_volume Int?
+  phone           String?
+  is_franchise    Boolean  @default(false)
   
-  // Design & Localization
-  thema           String?  // Brand'den gelen tema
-  customThema     String?  // Şubeye özel override
+  country         String?  @default("Türkiye")
+  city            String?  
+  district        String?  
+  address_detail  String?  @db.Text
   
-  languageId      Int      // Şubenin varsayılan dili
+  latitude        Float?   
+  longitude       Float?   
+
+  payment_methods Json?    
+
+  is_active       Boolean  @default(true)
+
+  languageId      Int      
   defaultLanguage Language @relation(fields: [languageId], references: [id])
-  
   brandId         Int
   brand           Brand    @relation(fields: [brandId], references: [id])
   
-  identities      Identity[] // Şube çalışanı/yöneticisi kimlikleri
-
+  official_name   String?
+  vkn             String?
+  employee_volume Int?     @default(0)
+  identities      Identity[]
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
   is_deleted      Boolean  @default(false)
 }
-
-// --- PRODUCT & CATEGORY MANAGEMENT ---
 
 model Product {
   id              Int               @id @default(autoincrement())
@@ -126,7 +122,7 @@ model Product {
 model Category {
   id              Int               @id @default(autoincrement())
   ext_id          String            @unique
-  type            String?           // örn: "food", "drink"
+  type            String?
   product_links   CategoryProduct[]
 
   created_at      DateTime          @default(now())
@@ -154,11 +150,9 @@ model CategoryProduct {
   @@unique([brandId, categoryId, productId])
 }
 
-// --- LOCALIZATION SYSTEM ---
-
 model Language {
   id              Int           @id @default(autoincrement())
-  code            String        @unique // tr, en, de
+  code            String        @unique
   name            String
   values          StringValue[]
   subvendors      Subvendor[]
@@ -170,9 +164,9 @@ model Language {
 
 model StringValue {
   id              Int       @id @default(autoincrement())
-  entity_id       Int       // Product veya Category ID
+  entity_id       Int
   value           String
-  type            String    // "product_name", "category_name" vb.
+  type            String
   
   languageId      Int
   language        Language  @relation(fields: [languageId], references: [id])

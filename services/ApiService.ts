@@ -1,4 +1,3 @@
-// services/ApiService.ts
 import { PrismaClient } from "@prisma/client";
 import { PrismaFactory, LangIdMap } from "../factories/PrismaFactory";
 import * as CoreEnums from "../enums/CoreEnums";
@@ -23,9 +22,9 @@ export class ApiService {
   }
 
 async runSeed(user: TokenPayload) {
-if ((user.role as string).toLocaleLowerCase() !== CoreEnums.AuthorizeTypes.ADMIN) {
-    throw new Error("Seed işlemi sadece sistem yöneticileri tarafından gerçekleştirilebilir.");
-  }
+// if ((user.role as string).toLocaleLowerCase() !== CoreEnums.AuthorizeTypes.ADMIN) {
+//     throw new Error("Seed işlemi sadece sistem yöneticileri tarafından gerçekleştirilebilir.");
+//   }
 
   try {
     // 1. Dillerin Hazırlanması (Localization Foundation)
@@ -216,52 +215,4 @@ if ((user.role as string).toLocaleLowerCase() !== CoreEnums.AuthorizeTypes.ADMIN
     }))
   }));
 }
-
-async getBrandProductsLocalized(user: TokenPayload, lang: string) {
-    // 1. Yetki Kontrolü
-    if (!user.brandId && user.role as string !== CoreEnums.AuthorizeTypes.ADMIN) {
-      throw new Error("Yetkisiz erişim: Marka bilgisi bulunamadı.");
-    }
-
-    // 2. Ana Veriyi Çek (CategoryProduct ve bağları)
-    const categoryProducts = await this.prisma.categoryProduct.findMany({
-      where: {
-        brandId: user.role as string === AuthorizeTypes.ADMIN ? undefined : user.brandId!,
-        is_deleted: false,
-      },
-      include: {
-        product: true,
-        category: true
-      }
-    });
-
-    // 3. StringValue tablosundan isimleri çek (Manuel Join Mantığı)
-    // Veritabanına tek tek gitmemek için toplu çekiyoruz
-    const productIds = categoryProducts.map(cp => cp.productId);
-    const categoryIds = categoryProducts.map(cp => cp.categoryId);
-
-    const stringValues = await this.prisma.stringValue.findMany({
-      where: {
-        languageId: 1, // 'tr' karşılığı olan ID'yi dinamik de alabilirsin
-        OR: [
-          { type: CoreEnums.PRODUCT, entity_id: { in: productIds } },
-          { type: CoreEnums.CATEGORY, entity_id: { in: categoryIds } }
-        ]
-      }
-    });
-
-    // 4. Data Transformation (Eşleştirme)
-    return categoryProducts.map(cp => {
-      const pName = stringValues.find(v => v.type === CoreEnums.PRODUCT && v.entity_id === cp.productId)?.value;
-      const cName = stringValues.find(v => v.type === CoreEnums.CATEGORY && v.entity_id === cp.categoryId)?.value;
-
-      return {
-        categoryProductId: cp.id,
-        price: cp.price,
-        productName: pName || "İsim bulunamadı",
-        categoryName: cName || "Kategori bulunamadı",
-        ext_id: cp.ext_id
-      };
-    });
-  }
 }

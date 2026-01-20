@@ -33,23 +33,6 @@ export class ApiController {
     }
   };
 
-  // 3. Marka Ürünlerini Listeleme (Localized)
-  getMyProducts = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const user = req.user!; 
-      const lang = (req.query.lang as string) || 'tr';
-
-      const result = await this.apiService.getBrandProductsLocalized(user, lang);
-      
-      res.status(200).json({
-        status: "success",
-        data: result
-      });
-    } catch (error: any) {
-      res.status(403).json({ status: "error", message: error.message });
-    }
-  };
-
   // 4. Yönetimsel Kayıt Metotları (Admin/Owner Yetki Kontrolleri Eklenmeli)
   postOwner = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -60,38 +43,6 @@ export class ApiController {
       }
       const { ext_id, name, vkn } = req.body;
       const data = await this.factory.upsertOwner(ext_id, name, vkn);
-      res.status(201).json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-
-  postCategory = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const user = req.user!;
-      if ((user.role as string) !== CoreEnums.AuthorizeTypes.ADMIN) {
-        res.status(403).json({ message: "Bu işlem için Admin yetkisi gerekiyor." });
-        return;
-      }
-      const { ext_id, names, type } = req.body;
-      const langMap = await this.apiService.getLangMap();
-      const data = await this.factory.upsertCategory(ext_id, names, langMap, type);
-      res.status(201).json(data);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-
-  postProduct = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const user = req.user!;
-      if ((user.role as string) !== CoreEnums.AuthorizeTypes.ADMIN) {
-        res.status(403).json({ message: "Bu işlem için Admin yetkisi gerekiyor." });
-        return;
-      }
-      const { ext_id, names, type } = req.body;
-      const langMap = await this.apiService.getLangMap();
-      const data = await this.factory.upsertProduct(ext_id, names, langMap, type);
       res.status(201).json(data);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

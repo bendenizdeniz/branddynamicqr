@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { JwtUtils, TokenPayload } from '../utils/JwtUtils';
 
-// Express Request tipini genişleterek içine 'user' ekliyoruz
 declare global {
   namespace Express {
     interface Request {
